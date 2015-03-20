@@ -1,86 +1,151 @@
-# Logstash Plugin
+<html>
+<head>
+<meta charset="UTF-8">
+<title>logstash for SCAPI - input scabmcfile</title>
+<link rel="stylesheet" href="http://logstash.net/style.css">
+</head>
+<body>
+<div class="container">
 
-This is a plugin for [Logstash](https://github.com/elasticsearch/logstash).
+<div id="content_right">
+<!--main content goes here, yo!-->
+<div class="content_wrapper">
 
-It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
-
-## Documentation
-
-Logstash provides infrastructure to automatically generate documentation for this plugin. We use the asciidoc format to write documentation so any comments in the source code will be first converted into asciidoc and then into html. All plugin documentation are placed under one [central location](http://www.elasticsearch.org/guide/en/logstash/current/).
-
-- For formatting code or config example, you can use the asciidoc `[source,ruby]` directive
-- For more asciidoc formatting tips, see the excellent reference here https://github.com/elasticsearch/docs#asciidoc-guide
-
-## Need Help?
-
-Need help? Try #logstash on freenode IRC or the logstash-users@googlegroups.com mailing list.
-
-## Developing
-
-### 1. Plugin Developement and Testing
-
-#### Code
-- To get started, you'll need JRuby with the Bundler gem installed.
-
-- Create a new plugin or clone and existing from the GitHub [logstash-plugins](https://github.com/logstash-plugins) organization. We also provide [example plugins](https://github.com/logstash-plugins?query=example).
-
-- Install dependencies
-```sh
-bundle install
-```
-
-#### Test
-
-- Update your dependencies
-
-```sh
-bundle install
-```
-
-- Run tests
-
-```sh
-bundle exec rspec
-```
-
-### 2. Running your unpublished Plugin in Logstash
-
-#### 2.1 Run in a local Logstash clone
-
-- Edit Logstash `Gemfile` and add the local plugin path, for example:
-```ruby
-gem "logstash-filter-awesome", :path => "/your/local/logstash-filter-awesome"
-```
-- Install plugin
-```sh
-bin/plugin install --no-verify
-```
-- Run Logstash with your plugin
-```sh
-bin/logstash -e 'filter {awesome {}}'
-```
-At this point any modifications to the plugin code will be applied to this local Logstash setup. After modifying the plugin, simply rerun Logstash.
-
-#### 2.2 Run in an installed Logstash
-
-You can use the same **2.1** method to run your plugin in an installed Logstash by editing its `Gemfile` and pointing the `:path` to your local plugin development directory or you can build the gem and install it using:
-
-- Build your plugin gem
-```sh
-gem build logstash-filter-awesome.gemspec
-```
-- Install the plugin from the Logstash home
-```sh
-bin/plugin install /your/local/plugin/logstash-filter-awesome.gem
-```
-- Start Logstash and proceed to test the plugin
-
-## Contributing
-
-All contributions are welcome: ideas, patches, documentation, bug reports, complaints, and even something you drew up on a napkin.
-
-Programming is not a required skill. Whatever you've seen about open source and maintainers or community members  saying "send patches or die" - you will not see that here.
-
-It is more important to the community that you are able to contribute.
-
-For more information about contributing, see the [CONTRIBUTING](https://github.com/elasticsearch/logstash/blob/master/CONTRIBUTING.md) file.
+<h2>scabmcfile</h2>
+<h3>Milestone: <a href="http://logstash.net/docs/1.4.2/plugin-milestones">1</a></h3>
+<h3> Synopsis </h3>
+Reads BMC files, produced by the BMC <code>dump_hist</code> command, from a specified directory. It reformats, sorts, pivots (from skinny to wide) the data and produces a stream of events suitable for feeding to other Logstash operators, most typically <a href="./output_scacsv.html">scacsv</a>.
+<p>
+<pre><code>input {
+  scabmcfile {
+    <a href="#path">path</a> => ... # string (required)
+    <a href="#done_dir">done_dir</a> => ... # string (required)
+    <a href="#ready_file">ready_file</a> => ... # string (optional), default: ""
+    <a href="#tz_offset">tz_offset</a> => ... # number (optional), default: 0
+    <a href="#groups">groups</a> => ... # array (optional), []: 0
+    <a href="#poll_interval">poll_interval</a> => ... # number (optional), default: 10
+    }
+}
+</code></pre>
+<h3> Details </h3>
+A number of key functions are encapsulated in this <code>input</code>. Taking a look at a typical input file will help understand those.
+<pre><code>server002/MEMORY.MEMORY/MEMFreeMem
+Thu Nov 6 12:40:00 2014 137356
+Thu Nov 6 12:41:00 2014 138552
+...
+Thu Nov 6 12:45:00 2014 132500
+server002/CPU.CPU/CPUCpuUtil
+Thu Nov 6 13:23:00 2014 58.7869
+Thu Nov 6 13:24:00 2014 57.3054
+...
+Thu Nov 6 13:31:00 2014 53.9605
+server002/MEMORY.MEMORY/MEMUsedMem
+Thu Nov 6 12:40:00 2014 237356
+Thu Nov 6 12:41:00 2014 238552
+...
+Thu Nov 6 12:44:00 2014 232472
+server002/MEMORY.MEMORY/MEMFreeMem
+Thu Nov 6 12:45:00 2014 105888
+Thu Nov 6 12:46:00 2014 132940
+...
+Thu Nov 6 12:51:00 2014 166220
+Total matched parameters: 4
+</code></pre>
+<p>
+First, there is key Node(or server,host etc), Group, Instance and Metric identity information at the start of each section. This is followed by actual timestamp and metric values (indented). The basic pattern is <code>node/group.instance/metric</code> and these fields are used to form the appropriate identities. This information is prepended to the subsequent metric lines to form a set of events. Then this set of events are sorted by time. This is required because the data in the file is ordered by resource etc. info rather than time. Finally, the events are pivoted from the essentially skinny format, to the required wide.
+</p>
+<p>The output is a stream of events which can be passed directly to a <a href="./output_scacsv.html">scacsv</a> output.
+<h4>
+<a name="path">
+path
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#string">String</a> </li>
+<li> There is no default for this setting </li>
+</ul>
+<p>Path to a directory where input files are to be found . File glob/wildcards are acceptable.</p>
+<h4>
+<a name="done_dir">
+done_dir
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#string">String</a> </li>
+<li> There is no default for this setting </li>
+</ul>
+<p>
+When each file from the input <code>path</code> is processed, it will be moved to the directory specified by <code>done_dir</code>.
+Note. It is the user responsibility to clean up the content in this directory e.g. by establish periodic jobs to delete content
+</p>
+<h4>
+<a name="ready_file">
+ready_file
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#string">String</a> </li>
+<li> The default value is "" </li>
+</ul>
+<p>
+If this string has value, that value should be the full pathname to a file, which will be used as a token file. When <code>scabmcfile</code> find this token file, it will delete it, and then process the files in the directory in the normal way. If the string is empty, then files are processed normally. The presence or absence of such a token file can be used to control when file occurs. For example, you can keep moving files into the directory, but they will only be picked up if the token file is present.
+</p>
+<h4>
+<a name="tz_offset">
+tz_offset
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#number">Number</a> </li>
+<li> The default value is 0 </li>
+</ul>
+<p>
+A number of seconds to add to the epoch time of each event. Use this to ensure that the <code>starttime</code> and <code>endtime</code> assigned downstream by <a href="./input_scabmcfile.html">scabmcfile</a> will be properly aligned. This is sometimes necessary as the plugin converts the timestamp in the data to epoch time, and the offset applied depends on the timezone of the host system, so you can use this setting to compensate.
+</p>
+<h4>
+<a name="groups">
+groups
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#array">Array</a> </li>
+<li> The default value is [], meaning 'allow all groups' </li>
+</ul>
+<p>
+A set of group names, which specify which groups of metrics are to be processed. If the array is empty (default), then all groups encountered will be processed. If one or more group names are provided, then only those will be processed.
+This is extremely useful in filtering larger sets of data, where we want to remove some groups. Ideally, only data we wish to process would be exported, but this is not always the way
+</p>
+<h4>
+<a name="poll_interval">
+poll_interval
+</a>
+</h4>
+<ul>
+<li> Value type is <a href="http://logstash.net/docs/1.4.2/configuration#number">Number</a> </li>
+<li> The default value is 10 </li>
+</ul>
+<p>
+The number of seconds to wait between reading filenames from the directory.
+</p>
+<hr>
+</div>
+<div class="clear">
+</div>
+</div>
+</div>
+<!--closes main container div-->
+<div class="clear">
+</div>
+<div class="footer">
+<p>
+Hello! I'm your friendly footer. If you're actually reading this, I'm impressed.
+</p>
+</div>
+<noscript>
+<div style="display:inline;">
+<img height="1" width="1" style="border-style:none;" alt="" src="//googleads.g.doubleclick.net/pagead/viewthroughconversion/985891458/?value=0&amp;guid=ON&amp;script=0"/>
+</div>
+</noscript>
+<script src="/js/patch.js?1.4.2"></script>
+</body>
+</html>
